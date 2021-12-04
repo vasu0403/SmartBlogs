@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma experimental ABIEncoderV2;
 pragma solidity >=0.4.22 <0.9.0;
-
+// count, like, donate
 contract SmartBlogs {
 
 	enum BlogType {PAID, UNPAID}
@@ -13,6 +13,8 @@ contract SmartBlogs {
 		BlogType paid;
 		uint value;
 		address payable ownerId;
+		uint purchasedBy;
+		uint likes;
 	}
 
 	struct BlogTitle {
@@ -21,6 +23,8 @@ contract SmartBlogs {
 		BlogType paid;
 		uint value;
 		address ownerId;
+		uint purchasedBy;
+		uint likes;
 	}
 
 
@@ -33,6 +37,7 @@ contract SmartBlogs {
 	mapping(address => Blog[]) myPaidBlogs;
 	// @dev list of blogs which each person has added
 	mapping(address => Blog[]) myOwnedBlogs;
+	mapping(uint => address[]) likes;
 
 	// @dev list of all the blogs posted
 	Blog[] private blogs;
@@ -45,8 +50,16 @@ contract SmartBlogs {
 		_;
 	}
 
+	modifier validBlogId(uint blogId) {
+		require(
+			blogId >= 0 && blogId < blogs.length,
+			"Invalid blog ID"
+		);
+		_;
+	}
+
 	function addBlog(string memory blogTitle, string memory blogContent, uint value) public {
-		Blog memory blog = Blog(blogCounter, blogTitle, blogContent, value == 0 ? BlogType.UNPAID : BlogType.PAID, value, msg.sender);
+		Blog memory blog = Blog(blogCounter, blogTitle, blogContent, value == 0 ? BlogType.UNPAID : BlogType.PAID, value, msg.sender, 0, 0);
 		owners[blogCounter] = msg.sender;
 		myOwnedBlogs[msg.sender].push(blog);
 		blogs.push(blog);
@@ -56,7 +69,7 @@ contract SmartBlogs {
 	function listBlogs() public view returns (BlogTitle[] memory) {
 		BlogTitle[] memory blogsWithOnlyTitles = new BlogTitle[](blogs.length);
 		for(uint i = 0; i < blogs.length; i++) {
-			BlogTitle memory blogWithOnlyTitle = BlogTitle(blogs[i].blogId, blogs[i].blogTitle, blogs[i].paid, blogs[i].value, blogs[i].ownerId);
+			BlogTitle memory blogWithOnlyTitle = BlogTitle(blogs[i].blogId, blogs[i].blogTitle, blogs[i].paid, blogs[i].value, blogs[i].ownerId, blogs[i].purchasedBy, blogs[i].likes);
 			blogsWithOnlyTitles[i] = blogWithOnlyTitle;
 		}
 		return blogsWithOnlyTitles;
@@ -73,7 +86,7 @@ contract SmartBlogs {
 		uint index = 0;
 		for(uint i = 0; i < blogs.length; i++) {
 			if(blogs[i].value == 0) {
-				blogsWithOnlyTitles[index++] = BlogTitle(blogs[i].blogId, blogs[i].blogTitle, blogs[i].paid, blogs[i].value, blogs[i].ownerId);
+				blogsWithOnlyTitles[index++] = BlogTitle(blogs[i].blogId, blogs[i].blogTitle, blogs[i].paid, blogs[i].value, blogs[i].ownerId, blogs[i].purchasedBy, blogs[i].likes);
 			}
 		}
 		return blogsWithOnlyTitles;
@@ -98,6 +111,7 @@ contract SmartBlogs {
 		);
 		
 		viewers[blogId].push(msg.sender);
+		blogs[blogId].purchasedBy = viewers[blogId].length;
 		myPaidBlogs[msg.sender].push(blogs[blogId]);
 
 		address payable ownerAddress = blogs[blogId].ownerId;
@@ -135,6 +149,23 @@ contract SmartBlogs {
 		return viewers[blogId];
 	}
 
+	function donate(uint blogId) public payable {
+		address payable ownerAddress = blogs[blogId].ownerId;
+		ownerAddress.transfer(msg.value);
+	}
+
+	function likeBlog(uint blogId) public validBlogId(blogId) {
+		bool alreadyLiked = false;
+		for(uint i = 0; i < likes[blogId].length; i++) {
+			if(likes[blogId][i] == msg.sender) {
+				alreadyLiked = true;
+			}
+		}
+		if(alreadyLiked) return;
+		likes[blogId].push(msg.sender);
+		blogs[blogId].likes += 1;
+	}
 	constructor() public {
+		
 	}
 }
