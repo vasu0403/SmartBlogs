@@ -37,6 +37,7 @@ contract SmartBlogs {
 	mapping(address => Blog[]) myPaidBlogs;
 	// @dev list of blogs which each person has added
 	mapping(address => Blog[]) myOwnedBlogs;
+	// @dev addresses of all people who have liked a particular blog
 	mapping(uint => address[]) likes;
 
 	// @dev list of all the blogs posted
@@ -58,6 +59,12 @@ contract SmartBlogs {
 		_;
 	}
 
+	/**
+     * @notice adds a new blog
+     * @param blogTitle title of the new blog
+     * @param blogContent content of the blog 
+     * @param value asking price of the blog
+     */
 	function addBlog(string memory blogTitle, string memory blogContent, uint value) public {
 		Blog memory blog = Blog(blogCounter, blogTitle, blogContent, value == 0 ? BlogType.UNPAID : BlogType.PAID, value, msg.sender, 0, 0);
 		owners[blogCounter] = msg.sender;
@@ -66,6 +73,9 @@ contract SmartBlogs {
 		blogCounter++;
 	}
 
+	/**
+     * @notice lists all the blogs
+     */
 	function listBlogs() public view returns (BlogTitle[] memory) {
 		BlogTitle[] memory blogsWithOnlyTitles = new BlogTitle[](blogs.length);
 		for(uint i = 0; i < blogs.length; i++) {
@@ -75,6 +85,9 @@ contract SmartBlogs {
 		return blogsWithOnlyTitles;
 	}
 
+	/**
+     * @notice lists all the free blogs
+     */
 	function listFreeBlogs() public view returns (BlogTitle[] memory) {
 		uint numFreeBlogs = 0;
 		for(uint i = 0; i < blogs.length; i++) {
@@ -92,6 +105,10 @@ contract SmartBlogs {
 		return blogsWithOnlyTitles;
 	}
 
+	/**
+     * @notice pays the blog creator the asking price
+     * @param blogId id of the blog for which the price is being paid
+     */
 	function payForBlog(uint blogId) public payable {
 		bool flag = false;
 		for(uint i = 0; i < myPaidBlogs[msg.sender].length; i++) {
@@ -118,6 +135,11 @@ contract SmartBlogs {
 		ownerAddress.transfer(blogs[blogId].value);
 	}
 
+
+	/**
+     * @notice view a particular blog
+     * @param blogId id of the blog
+     */
 	function viewBlog(uint blogId) public view returns (Blog memory) {
 		if(blogs[blogId].value == 0) {
 			return blogs[blogId];
@@ -137,23 +159,41 @@ contract SmartBlogs {
 		return blogs[blogId];
 	}
 
+	/**
+     * @notice get all the blogs you have bought
+     */
 	function getBlogsPaidFor() public view returns (Blog[] memory) {
 		return myPaidBlogs[msg.sender];
 	}
 
+	/**
+     * @notice get blogs created by you
+     */
 	function getOwnedBlogs() public view returns (Blog[] memory) {
 		return myOwnedBlogs[msg.sender];
 	}
 
+	/**
+     * @notice get the addreseses of people who have purchased a particular blog
+     * @param blogId id of the blog
+     */
 	function getBlogViewers(uint blogId) public view onlyOwner(blogId) returns(address[] memory) {
 		return viewers[blogId];
 	}
 
+	/**
+     * @notice donates money to the creator of particular blog
+     * @param blogId id of the blog
+     */
 	function donate(uint blogId) public payable {
 		address payable ownerAddress = blogs[blogId].ownerId;
 		ownerAddress.transfer(msg.value);
 	}
 
+	/**
+     * @notice like a particular blog
+     * @param blogId id of the blog
+     */
 	function likeBlog(uint blogId) public validBlogId(blogId) {
 		bool alreadyLiked = false;
 		for(uint i = 0; i < likes[blogId].length; i++) {
